@@ -126,78 +126,79 @@ function g.test_tree_index_multipart()
     end
 end
 
-if _TARANTOOL >= "2" then
-    function g.test_tree_index_json_path()
-        for _, space in pairs({g.tree, g.vinyl}) do
-            helpers.iteration_result = {}
-
-            space:insert({1, "1", nil, nil, nil, { age  = 3 }})
-            space:insert({2, "2", nil, nil, nil, { age  = 1 }})
-            space:insert({3, "3", nil, nil, nil, { age  = 2 }})
-            space:insert({4, "4", nil, nil, nil, { days = 3 }})
-            space:insert({5, "5", nil, nil, nil, { days = 1 }})
-            space:insert({6, "6", nil, nil, nil, { days = 2 }})
-
-
-            local task = expirationd.start("clean_all", space.id, helpers.is_expired_debug,
-                    {index = "json_path_index"})
-            -- wait for tuples expired
-            helpers.retrying({}, function()
-                t.assert_equals(helpers.iteration_result, {
-                    {4, "4", nil, nil, nil, { days = 3 }},
-                    {5, "5", nil, nil, nil, { days = 1 }},
-                    {6, "6", nil, nil, nil, { days = 2 }},
-                    {2, "2", nil, nil, nil, { age = 1 }},
-                    {3, "3", nil, nil, nil, { age = 2 }},
-                    {1, "1", nil, nil, nil, { age = 3 }}
-                })
-            end)
-            task:kill()
-        end
-    end
-
-    function g.test_tree_index_multikey()
-        for _, space in pairs({g.tree, g.vinyl}) do
-            helpers.iteration_result = {}
-
-            space:insert({1, "1", nil, nil, nil, nil, {data = {{name = "A"},
-                                                               {name = "B"}},
-                                                       extra_field = 1}})
-
-            local task = expirationd.start("clean_all", space.id, helpers.is_expired_debug,
-                    {index = "multikey_index"})
-            -- wait for tuples expired
-            helpers.retrying({}, function()
-                -- met only once, since we delete and cannot walk a second time on name = "B"
-                t.assert_equals(helpers.iteration_result, {
-                    {1, "1", nil, nil, nil, nil, {data = {{name = "A"},
-                                                          {name = "B"}},
-                                                  extra_field = 1}}
-                })
-            end)
-            task:kill()
-        end
-    end
-
-    function g.test_memtx_tree_functional_index()
-        -- vinyl doesn't support functional indexes
+function g.test_tree_index_json_path()
+    t.skip_if(_TARANTOOL < "2")
+    for _, space in pairs({g.tree, g.vinyl}) do
         helpers.iteration_result = {}
 
-        g.tree:insert({1, "1", nil, nil, nil, nil, nil, "12"})
-        g.tree:insert({2, "2", nil, nil, nil, nil, nil, "21"})
+        space:insert({1, "1", nil, nil, nil, { age  = 3 }})
+        space:insert({2, "2", nil, nil, nil, { age  = 1 }})
+        space:insert({3, "3", nil, nil, nil, { age  = 2 }})
+        space:insert({4, "4", nil, nil, nil, { days = 3 }})
+        space:insert({5, "5", nil, nil, nil, { days = 1 }})
+        space:insert({6, "6", nil, nil, nil, { days = 2 }})
 
-        local task = expirationd.start("clean_all", g.tree.id, helpers.is_expired_debug,
-                {index = "functional_index"})
+
+        local task = expirationd.start("clean_all", space.id, helpers.is_expired_debug,
+                {index = "json_path_index"})
         -- wait for tuples expired
         helpers.retrying({}, function()
-            -- sort by second character to eighth field
             t.assert_equals(helpers.iteration_result, {
-                {2, "2", nil, nil, nil, nil, nil, "21"},
-                {1, "1", nil, nil, nil, nil, nil, "12"}
+                {4, "4", nil, nil, nil, { days = 3 }},
+                {5, "5", nil, nil, nil, { days = 1 }},
+                {6, "6", nil, nil, nil, { days = 2 }},
+                {2, "2", nil, nil, nil, { age = 1 }},
+                {3, "3", nil, nil, nil, { age = 2 }},
+                {1, "1", nil, nil, nil, { age = 3 }}
             })
         end)
         task:kill()
     end
+end
+
+function g.test_tree_index_multikey()
+    t.skip_if(_TARANTOOL < "2")
+    for _, space in pairs({g.tree, g.vinyl}) do
+        helpers.iteration_result = {}
+
+        space:insert({1, "1", nil, nil, nil, nil, {data = {{name = "A"},
+                                                           {name = "B"}},
+                                                   extra_field = 1}})
+
+        local task = expirationd.start("clean_all", space.id, helpers.is_expired_debug,
+                {index = "multikey_index"})
+        -- wait for tuples expired
+        helpers.retrying({}, function()
+            -- met only once, since we delete and cannot walk a second time on name = "B"
+            t.assert_equals(helpers.iteration_result, {
+                {1, "1", nil, nil, nil, nil, {data = {{name = "A"},
+                                                      {name = "B"}},
+                                              extra_field = 1}}
+            })
+        end)
+        task:kill()
+    end
+end
+
+function g.test_memtx_tree_functional_index()
+    t.skip_if(_TARANTOOL < "2")
+    -- vinyl doesn't support functional indexes
+    helpers.iteration_result = {}
+
+    g.tree:insert({1, "1", nil, nil, nil, nil, nil, "12"})
+    g.tree:insert({2, "2", nil, nil, nil, nil, nil, "21"})
+
+    local task = expirationd.start("clean_all", g.tree.id, helpers.is_expired_debug,
+            {index = "functional_index"})
+    -- wait for tuples expired
+    helpers.retrying({}, function()
+        -- sort by second character to eighth field
+        t.assert_equals(helpers.iteration_result, {
+            {2, "2", nil, nil, nil, nil, nil, "21"},
+            {1, "1", nil, nil, nil, nil, nil, "12"}
+        })
+    end)
+    task:kill()
 end
 
 

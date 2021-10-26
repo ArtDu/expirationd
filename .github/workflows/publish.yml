@@ -2,8 +2,6 @@ name: publish
 
 on:
   push:
-    branches: [master]
-    tags: ['*']
 
 jobs:
   publish-rockspec-scm-1:
@@ -48,19 +46,8 @@ jobs:
       - uses: tarantool/setup-tarantool@v1
         with:
           tarantool-version: '1.10'
-      - run: tarantoolctl rocks install expirationd-${{ env.TAG }}-1.rockspec
-      - run: tarantoolctl rocks pack expirationd ${{ env.TAG }}
-
-      # Upload .rockspec and .all.rock.
-      - uses: tarantool/rocks.tarantool.org/github-action@master
-        with:
-          auth: ${{ secrets.ROCKS_AUTH }}
-          files: |
-            expirationd-${{ env.TAG }}-1.rockspec
-            expirationd-${{ env.TAG }}-1.all.rock
 
   publish-ldoc:
-    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Cache rocks

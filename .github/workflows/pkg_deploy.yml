@@ -1,0 +1,68 @@
+name: pkg_deploy
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { os: debian, dist: stretch }
+          - { os: debian, dist: buster }
+          - { os: debian, dist: bullseye }
+          - { os: el, dist: 7 }
+          - { os: el, dist: 8 }
+          - { os: fedora, dist: 30 }
+          - { os: fedora, dist: 31 }
+          - { os: fedora, dist: 32 }
+          - { os: fedora, dist: 33 }
+          - { os: fedora, dist: 34 }
+          - { os: ubuntu, dist: xenial }
+          - { os: ubuntu, dist: bionic }
+          - { os: ubuntu, dist: focal }
+          - { os: ubuntu, dist: groovy }
+          - { os: ubuntu, dist: hirsute }
+
+    steps:
+      - name: Clone the module
+        uses: actions/checkout@v2
+
+      - name: Clone the packpack tool
+        uses: actions/checkout@v2
+        with:
+          repository: packpack/packpack
+          path: packpack
+
+      - name: Create packages
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          OS: ${{ matrix.platform.os }}
+          DIST: ${{ matrix.platform.dist }}
+        run: ./packpack/packpack
+
+#      - name: Deploy packages
+#        env:
+#          RELEASE_REPO_S3_DIR: ${{ secrets.RELEASE_REPO_S3_DIR }}
+#          PRERELEASE_REPO_S3_DIR: ${{ secrets.PRERELEASE_REPO_S3_DIR }}
+#          RWS_URL: ${{ secrets.RWS_URL }}
+#          RWS_USER: ${{ secrets.RWS_USER }}
+#          RWS_PASSWORD: ${{ secrets.RWS_PASSWORD }}
+#        run: |
+#          CURL_CMD="curl \
+#            -X PUT ${RWS_URL}/${REPO_S3_DIR}/${TNT_VERSION_S3_DIR}/${OS}/${DIST} \
+#            -u $${RWS_USER}:$${RWS_PASSWORD} \
+#            -F product=tarantool-queue"
+#
+#          for f in $(ls -I '*build*' -I '*.changes' ./build); do
+#            CURL_CMD+=" -F $(basename ${f})=@./build/${f}"
+#          done
+#
+#          ${CURL_CMD}
